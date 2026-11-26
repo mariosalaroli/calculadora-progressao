@@ -195,6 +195,14 @@ if erro:
     st.error(erro)
     st.stop()
 
+# Sem atraso (1ª progressão recebida no prazo ou antes) não há diferença a calcular
+devida = c.add(adm, progressao)
+if primeira_paga <= devida:
+    quando = "no prazo" if primeira_paga == devida else "antes do prazo"
+    st.info(f"Sem atraso: a 1ª progressão era devida em {mes_ano(devida)} ({progressao} meses após a admissão) "
+            f"e foi recebida em {mes_ano(primeira_paga)}, {quando}. Não há diferenças a receber.")
+    st.stop()
+
 aba_res, aba_mes, aba_met = st.tabs(["Resumo", "Mês a mês", "Como é calculado"])
 
 df = pd.DataFrame(res.linhas)
@@ -221,7 +229,7 @@ with aba_res:
                  if com_sindicato else f"corrigido pela Selic até {mes_ano(ATUALIZAR_ATE)}, sem desconto")
     grade([
         card("Valor a receber", f"R$ {br(liquido)}", sub_valor, destaque=True, sub_verde=True),
-        card("Atraso da 1ª progressão", f"{res.shift} meses", atraso_sub),
+        card("Atraso da 1ª progressão", f"{res.shift} {'mês' if res.shift == 1 else 'meses'}", atraso_sub),
         card("Meses com diferença", f"{meses_dif}", periodo),
     ])
 
@@ -230,7 +238,7 @@ with aba_res:
     if com_reflexos:
         partes += [("13º salário", res.total("13º"), AZUL), ("1/3 de férias", res.total("1/3 férias"), AZUL)]
     partes.append(("Correção pela Selic", juros, VERDE))
-    linhas_ext = [*(("+" if i else "", nome, v, "", v / corrigido, cor) for i, (nome, v, cor) in enumerate(partes))]
+    linhas_ext = [*(("+" if i else "", nome, v, "", (v / corrigido if corrigido else 0), cor) for i, (nome, v, cor) in enumerate(partes))]
     if com_sindicato:
         linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", None, None),
                        ("−", f"Desconto do sindicato ({pct_sind})", desconto, "desc", None, None)]
