@@ -70,6 +70,20 @@ h1 { font-weight: 600 !important; letter-spacing: -0.01em; }
 .ext-row.final .ext-l { color: #2dd4bf; font-weight: 600; }
 .ext-row.final .ext-v { color: #2dd4bf; font-weight: 600; font-size: 17px; }
 .ext-pct { font-size: 12px; color: #9a9a9a; margin-left: 6px; }
+/* Celular: título menor, extrato sem a coluna da barrinha (o % vai para baixo do rótulo) e títulos de seção
+   com espaço à direita para os ícones das tabelas */
+@media (max-width: 640px) {
+    h1 { font-size: 1.75rem !important; line-height: 1.2 !important; }
+    .mg-card.destaque .mg-value { font-size: 1.6rem; }
+    .mg-value { font-size: 1.35rem; }
+    .ext { padding: 0.2rem 0.8rem; }
+    .ext-row { grid-template-columns: 14px 1fr auto; gap: 8px; font-size: 13.5px; padding: 8px 0; }
+    .ext-row > div:nth-child(3) { display: none; }
+    .ext-pct { display: block; margin-left: 0; font-size: 11.5px; }
+    .ext-v { font-size: 13px; }
+    .ext-row.final .ext-v { font-size: 15px; }
+    .secao { padding-right: 120px; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -255,10 +269,10 @@ with aba_res:
     pontos = alt.Chart(longo).mark_point(size=70, filled=True, stroke="#212121", strokeWidth=2, opacity=1).encode(
         x=eixo_x, y=eixo_y, color=alt.Color("série:N", scale=cores, legend=None)
     ).transform_filter(hover)
-    st.altair_chart(estilo((faixa + linhas + alvo + guia + pontos).properties(height=340)), width="stretch")
+    st.altair_chart(estilo((faixa + linhas + alvo + guia + pontos).properties(height=340, padding={"left": 12, "right": 4})), width="stretch")
     st.caption("A faixa verde é o período em que o nível recebido ficou abaixo do devido. No eixo, o nível da "
                "tabela antiga (13 níveis, até 2024) e, entre parênteses, o equivalente na tabela atual (20 níveis). "
-               "Passe o mouse para ver cada mês.")
+               "Passe o mouse ou toque para ver cada mês.")
 
     # valor acumulado
     secao("Valor acumulado")
@@ -296,7 +310,7 @@ with aba_res:
     guia2 = alt.Chart(car).mark_rule(color="#777", strokeWidth=1).encode(x=eixo_x).transform_filter(hover2)
     pts2 = alt.Chart(acc).mark_point(size=70, filled=True, stroke="#212121", strokeWidth=2, opacity=1).encode(
         x=eixo_x, y=eixo_v, color=alt.Color("série:N", scale=cores_a, legend=None)).transform_filter(hover2)
-    st.altair_chart(estilo((area + l2 + rotulos + alvo2 + guia2 + pts2).properties(height=300)), width="stretch")
+    st.altair_chart(estilo((area + l2 + rotulos + alvo2 + guia2 + pts2).properties(height=300, padding={"left": 12, "right": 4})), width="stretch")
 
 # ---- mês a mês ----------------------------------------------------------------
 with aba_mes:
@@ -387,7 +401,9 @@ with aba_met:
                        columns=["ano", "mês", "taxa"])
     grade_selic = sel.pivot(index="ano", columns="mês", values="taxa").reindex(columns=range(1, 13))
     grade_selic.columns = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-    st.dataframe(grade_selic.style.format(lambda v: f"{v:.2f}".replace(".", ","), na_rep=""), width="stretch")
+    # Texto já formatado: mês sem taxa (antes de 2008/12 ou ainda sem dado) fica em branco
+    st.dataframe(grade_selic.astype(float).map(lambda v: "" if pd.isna(v) else f"{v:.2f}".replace(".", ",")),
+                 width="stretch")
 
     secao("Como é calculado")
     st.markdown(f"""
