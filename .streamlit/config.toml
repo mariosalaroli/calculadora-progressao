@@ -1,0 +1,17 @@
+# Tema escuro, nas cores do Cap22 (fundo #212121, cards #2e2e2e, destaque verde-água, lateral preta)
+[theme]
+base = "dark"
+backgroundColor = "#212121"
+secondaryBackgroundColor = "#2e2e2e"
+textColor = "#e4e4e4"
+borderColor = "#404040"
+primaryColor = "#2dd4bf"
+linkColor = "#2dd4bf"
+
+[theme.sidebar]
+backgroundColor = "#0d0d0d"
+secondaryBackgroundColor = "#1c1c1c"
+borderColor = "#2a2a2a"
+
+[client]
+toolbarMode = "viewer"

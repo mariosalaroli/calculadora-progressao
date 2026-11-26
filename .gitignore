@@ -1,0 +1,12 @@
+# Lista fechada: ignora tudo e libera só os arquivos da calculadora.
+# Fichas, históricos, planilhas e scripts pessoais ficam fora automaticamente.
+/*
+!/.gitignore
+!/app.py
+!/calculo.py
+!/selic_mensal.csv
+!/requirements.txt
+!/README.md
+!/.streamlit/
+/.streamlit/*
+!/.streamlit/config.toml
