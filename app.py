@@ -64,7 +64,7 @@ h1 { font-weight: 600 !important; letter-spacing: -0.01em; }
 .passo { font-size: 14px; line-height: 1.25; white-space: nowrap; }
 .passo span { display: block; font-size: 12px; color: #9a9a9a; }
 .passo-cab { display: flex; justify-content: space-between; font-size: 11px; color: #9a9a9a; letter-spacing: 0.05em;
-             text-transform: uppercase; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px solid #404040; }
+             text-transform: uppercase; padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1px solid #404040; }
 .rotulo-duplo { font-size: 14px; line-height: 1.6; margin: 0; padding-bottom: 2px; cursor: help; }
 .rotulo-duplo .dica { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
     border: 1px solid #9a9a9a; border-radius: 50%; font-size: 10px; color: #9a9a9a; margin-left: 4px;
@@ -207,9 +207,7 @@ if regra_op == PERSONALIZAR:
                 col_t.markdown(f'<div class="passo">{c.nome_na_data(idx - 1, d)} → {c.nome_na_data(idx, d)}'
                                f'<span>{quando}</span></div>', unsafe_allow_html=True)
                 meses_pers.append(m)
-            caixa.caption("Na 1ª linha, os meses contam desde a admissão e definem o atraso; nas outras, desde o "
-                          "passo anterior, e as datas seguintes se ajustam. Desde 01/2025, os nomes são os da tabela "
-                          "de 20 níveis.")
+            caixa.caption("Desde 01/2025, os nomes são os da tabela de 20 níveis.")
 com_reflexos = sb.checkbox(
     "4. Incluir 13º e 1/3 de férias", True,
     help="Valores estimados, sem as fichas: 50% do 13º em junho e o restante em novembro; 1/3 de férias uma vez "
