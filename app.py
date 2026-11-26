@@ -22,7 +22,7 @@ REGRAS = {"18 progressão / 12 promoção": (18, 12), "12 para tudo": (12, 12)}
 PERSONALIZAR = "Personalizar"   # 12 ou 18 meses escolhidos passo a passo
 FIM = (2026, 10)          # último mês já pago (diferenças até aqui)
 ATUALIZAR_ATE = (2026, 12)  # depois do último mês, só Selic
-SINDICATO = 0.09            # desconto do sindicato, sobre o total corrigido
+HONORARIOS = 0.09           # honorários advocatícios do escritório, sobre o total corrigido
 VERMELHO = "#f87171"
 
 
@@ -55,8 +55,16 @@ h1 { font-weight: 600 !important; letter-spacing: -0.01em; }
 .mg-barra > div { height: 100%; border-radius: 2px; }
 /* Mês e ano da 1ª progressão: sem o botão de limpar, para "setembro" caber na caixa */
 [data-testid="stSidebar"] [data-testid="stSelectbox"] button[aria-label="Clear value"] { display: none; }
-/* Tabela de passos (Personalizar): sem a barra de ícones, que no celular cobre a regra */
-[data-testid="stSidebar"] [data-testid="stElementToolbar"] { display: none; }
+/* Passos do "Personalizar": nome e data à esquerda, 12 | 18 à direita, lado a lado também no celular */
+.st-key-passos { gap: 0.35rem; }
+.st-key-passos [data-testid="stCaptionContainer"] { margin-top: 0.5rem; }
+.st-key-passos [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.5rem; }
+.st-key-passos [data-testid="stColumn"] { min-width: 0 !important; }
+.st-key-passos [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"] { align-items: flex-end; }
+.passo { font-size: 14px; line-height: 1.25; white-space: nowrap; }
+.passo span { display: block; font-size: 12px; color: #9a9a9a; }
+.passo-cab { display: flex; justify-content: space-between; font-size: 11px; color: #9a9a9a; letter-spacing: 0.05em;
+             text-transform: uppercase; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px solid #404040; }
 .rotulo-duplo { font-size: 14px; line-height: 1.6; margin: 0; padding-bottom: 2px; cursor: help; }
 .rotulo-duplo .dica { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
     border: 1px solid #9a9a9a; border-radius: 50%; font-size: 10px; color: #9a9a9a; margin-left: 4px;
@@ -158,43 +166,56 @@ regra_op = sb.radio("3. Regra de progressão", [*REGRAS, PERSONALIZAR],
 meses_pers = None
 if regra_op == PERSONALIZAR:
     if adm_data is None or mes_paga is None or ano_paga is None:
-        sb.caption("Preencha a admissão e a 1ª progressão para montar a tabela de passos.")
+        sb.caption("Preencha a admissão e a 1ª progressão para escolher os passos.")
     else:
         adm_p = (adm_data.year, adm_data.month)
         paga_p = (int(ano_paga), MESES_PROGRESSAO[mes_paga])
         if paga_p > adm_p:
-            # Começa pela regra 18/12; as escolhas ficam guardadas enquanto o nº de passos não mudar
-            padrao = c.meses_padrao(adm_p, paga_p, *REGRAS["18 progressão / 12 promoção"])
+            # Uma linha por passo, com 12 | 18 ao lado. Começa pela regra 18/12 (12 nas promoções); as escolhas
+            # ficam guardadas até mudar a admissão ou a 1ª progressão. Lidas em ordem, as datas já saem ajustadas.
             ss = st.session_state
-            if len(ss.get("meses_pers", [])) != len(padrao):
-                ss.meses_pers = padrao
-            ss.setdefault("versao_pers", 0)
-            passos = c.passos_personalizados(adm_p, paga_p, ss.meses_pers)
-            base = pd.DataFrame({
-                "passo": [f"{c.nome_na_data(i - 1, d)} → {c.nome_na_data(i, d)}" for d, i in passos],
-                "meses": ss.meses_pers[:len(passos)],
-                "recebido": [mes_ano(d) for d, _ in passos]})
-            editado = sb.data_editor(
-                base, key=f"pers_{ss.versao_pers}", hide_index=True, width="stretch", num_rows="fixed",
-                height=35 * (len(base) + 1) + 3,     # todas as linhas, sem rolagem interna
-                disabled=["passo", "recebido"],
-                column_config={"meses": st.column_config.SelectboxColumn("meses", options=[12, 18], required=True,
-                                                                         width="small")})
-            sb.caption(f"Toque ou clique duas vezes em \"meses\" para trocar entre 12 e 18. Na 1ª linha, são os meses desde a admissão "
-                       f"(definem o atraso); nas outras, desde o passo anterior, e as datas se ajustam. "
-                       f"Datas depois de {mes_ano(FIM)} são previstas. Desde 01/2025, os nomes são os da tabela de 20 níveis.")
-            novos = [int(m) for m in editado["meses"]]
-            if novos != ss.meses_pers[:len(passos)]:
-                ss.meses_pers = novos + ss.meses_pers[len(novos):]
-                ss.versao_pers += 1      # recria a tabela com as datas recalculadas
-                st.rerun()
-            meses_pers = ss.meses_pers
+            if ss.get("pers_base") != (adm_p, paga_p):
+                for k in [k for k in ss if str(k).startswith("pm_")]:
+                    del ss[k]
+                ss.pers_base = (adm_p, paga_p)
+
+            def manter_escolha(key: str) -> None:
+                """Tocar de novo na opção marcada não a desmarca: volta para a última escolha."""
+                if ss[key] is None:
+                    ss[key] = ss[key + "_ult"]
+                ss[key + "_ult"] = ss[key]
+
+            def classe(i: int, d: c.Ym) -> str:
+                return c.nome_na_data(i, d).split("-")[0]
+
+            caixa = sb.container(key="passos")
+            caixa.markdown('<div class="passo-cab"><span>passo · recebido em</span><span>meses</span></div>',
+                           unsafe_allow_html=True)
+            idx0 = c.nivel_para_idx20("A-I", adm_p)
+            meses_pers, d = [], paga_p
+            for k, idx in enumerate(range(idx0 + 1, 20)):
+                key = f"pm_{k}"
+                if key not in ss:
+                    cand = c.add(d, 18)
+                    ss[key] = ss[key + "_ult"] = 18 if k == 0 or classe(idx - 1, cand) == classe(idx, cand) else 12
+                col_t, col_m = caixa.columns([1.25, 1], vertical_alignment="center", gap="small")
+                m = col_m.segmented_control(f"Meses do passo {k + 1}", [12, 18], key=key, on_change=manter_escolha,
+                                            args=(key,), label_visibility="collapsed")
+                if k:
+                    d = c.add(d, m)
+                quando = mes_ano(d) + (" · prevista" if d > FIM else "")
+                col_t.markdown(f'<div class="passo">{c.nome_na_data(idx - 1, d)} → {c.nome_na_data(idx, d)}'
+                               f'<span>{quando}</span></div>', unsafe_allow_html=True)
+                meses_pers.append(m)
+            caixa.caption("Na 1ª linha, os meses contam desde a admissão e definem o atraso; nas outras, desde o "
+                          "passo anterior, e as datas seguintes se ajustam. Desde 01/2025, os nomes são os da tabela "
+                          "de 20 níveis.")
 com_reflexos = sb.checkbox(
     "4. Incluir 13º e 1/3 de férias", True,
     help="Valores estimados, sem as fichas: 50% do 13º em junho e o restante em novembro; 1/3 de férias uma vez "
          "por ano, em dezembro, a partir de 12 meses de exercício. A diferença é o valor sobre o nível devido menos "
          "o valor sobre o nível recebido. O mês real das férias muda pouco o total (até ~2%).")
-com_sindicato = sb.checkbox(f"5. Descontar {SINDICATO * 100:g}% do sindicato", True)
+com_honorarios = sb.checkbox(f"5. Descontar {HONORARIOS * 100:g}% de honorários advocatícios", True)
 MES_FERIAS = 12  # 1/3 de férias estimado em dezembro de cada ano (o mês que ficou mais perto dos valores reais nas fichas testadas)
 
 st.title("Ação de progressão - Cálculo do valor a receber")
@@ -266,11 +287,11 @@ with aba_res:
     juros = res.saldo_atualizado - nominal
     atraso_sub = f"devida {mes_ano(res.primeira_devida)} · recebida {mes_ano(res.primeira_paga)}"
     corrigido = res.saldo_atualizado
-    desconto = round(corrigido * SINDICATO, 2) if com_sindicato else 0.0
+    desconto = round(corrigido * HONORARIOS, 2) if com_honorarios else 0.0
     liquido = round(corrigido - desconto, 2)
-    pct_sind = f"{SINDICATO * 100:g}%"
-    sub_valor = (f"R$ {br(corrigido)} corrigido até {mes_ano(ATUALIZAR_ATE)} − {pct_sind} do sindicato"
-                 if com_sindicato else f"corrigido pela Selic até {mes_ano(ATUALIZAR_ATE)}, sem desconto")
+    pct_hon = f"{HONORARIOS * 100:g}%"
+    sub_valor = (f"R$ {br(corrigido)} corrigido até {mes_ano(ATUALIZAR_ATE)} − {pct_hon} de honorários"
+                 if com_honorarios else f"corrigido pela Selic até {mes_ano(ATUALIZAR_ATE)}, sem desconto")
     grade([
         card("Valor a receber", f"R$ {br(liquido)}", sub_valor, destaque=True, sub_verde=True),
         card("Atraso da 1ª progressão", f"{res.shift} {'mês' if res.shift == 1 else 'meses'}", atraso_sub),
@@ -283,9 +304,9 @@ with aba_res:
         partes += [("13º salário", res.total("13º"), AZUL), ("1/3 de férias", res.total("1/3 férias"), AZUL)]
     partes.append(("Correção pela Selic", juros, VERDE))
     linhas_ext = [*(("+" if i else "", nome, v, "", (v / corrigido if corrigido else 0), cor) for i, (nome, v, cor) in enumerate(partes))]
-    if com_sindicato:
+    if com_honorarios:
         linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", None, None),
-                       ("−", f"Desconto do sindicato ({pct_sind})", desconto, "desc", None, None)]
+                       ("−", f"Honorários advocatícios ({pct_hon})", desconto, "desc", None, None)]
     linhas_ext.append(("=", "Valor a receber", liquido, "final", None, None))
     extrato(linhas_ext)
 
@@ -395,12 +416,12 @@ with aba_mes:
 
     primeiro_mes = df["mes"].iloc[0]
     tab.insert(7, COL_SELIC, ["" if m == primeiro_mes else selic_anterior(m) for m in df["mes"]])
-    # Fecho da conta: os meses só com Selic, o desconto do sindicato e o valor a receber
+    # Fecho da conta: os meses só com Selic, os honorários advocatícios e o valor a receber
     fecho = [{"ano/mês": a["mes"], "verba": "atualização Selic", COL_SELIC: selic_anterior(a["mes"]),
               "saldo corrigido": a["saldo"]} for a in res.atualizacao]
     n_meses = len(tab) + len(fecho)
-    if com_sindicato:
-        fecho.append({"verba": f"desconto do sindicato ({pct_sind})", "diferença": -desconto, "saldo corrigido": liquido})
+    if com_honorarios:
+        fecho.append({"verba": f"honorários advocatícios ({pct_hon})", "diferença": -desconto, "saldo corrigido": liquido})
     fecho.append({"verba": "valor a receber", "saldo corrigido": liquido})
     tab = pd.concat([tab, pd.DataFrame(fecho)], ignore_index=True)
     juros, anterior = [], 0.0
@@ -419,7 +440,7 @@ with aba_mes:
                  hide_index=True, width="stretch", height=500)
     st.caption("Saldo corrigido = saldo da linha anterior + juros no mês + diferença. As últimas linhas fecham a "
                "conta: atualização pela Selic depois do último mês"
-               + (f", desconto do sindicato ({pct_sind}) sobre o total corrigido" if com_sindicato else "")
+               + (f", honorários advocatícios ({pct_hon}) sobre o total corrigido" if com_honorarios else "")
                + " e o valor a receber.")
 
     buf = io.StringIO()
@@ -469,7 +490,7 @@ with aba_met:
   escolhidos em cada passo.
 - **13º e 1/3 de férias**: estimados; 13º com metade em junho e o resto em novembro; 1/3 de férias em dezembro.
 - **Selic composta**: saldo do mês = saldo anterior × (1 + Selic do mês anterior) + diferenças do mês.
-- **Sindicato**: {SINDICATO * 100:g}% sobre o total corrigido.
+- **Honorários advocatícios**: {HONORARIOS * 100:g}% sobre o total corrigido, pagos ao escritório.
 - **Período**: diferenças de {mes_ano(c.INICIO_DIFERENCAS)} (ou da admissão, se posterior) até {mes_ano(FIM)};
   correção pela Selic até {mes_ano(ATUALIZAR_ATE)}.
 - **Limites**: é uma aproximação; afastamentos e licenças não são considerados.

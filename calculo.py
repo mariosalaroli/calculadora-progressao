@@ -145,23 +145,6 @@ def estender_historico(hist: list[tuple[str, str]], progressao: int, promocao: i
     return hist
 
 
-def _classe(idx20: int, ym: Ym) -> str:
-    return nome_na_data(idx20, ym).split("-")[0]
-
-
-def meses_padrao(admissao: Ym, primeira_paga: Ym, progressao: int, promocao: int) -> list[int]:
-    """Interstícios de cada passo pela regra, da 1ª progressão até o último nível. O 1º é o prazo da
-    1ª progressão a partir da admissão; os demais, o intervalo desde o passo anterior."""
-    idx = nivel_para_idx20("A-I", admissao) + 1
-    meses, d = [progressao], primeira_paga
-    while idx < 19:
-        cand = add(d, progressao)
-        m = promocao if _classe(idx, cand) != _classe(idx + 1, cand) else progressao
-        meses.append(m)
-        d, idx = add(d, m), idx + 1
-    return meses
-
-
 def passos_personalizados(admissao: Ym, primeira_paga: Ym, meses: list[int]) -> list[tuple[Ym, int]]:
     """Passos recebidos (mês, índice na escala de 20) com um interstício escolhido para cada passo.
     meses[0] só define quando a 1ª era devida; a 1ª é recebida em `primeira_paga`."""
