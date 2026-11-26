@@ -4,7 +4,6 @@ O histórico recebido é gerado pela regra de progressão; 13º e férias são e
 
 Rodar: streamlit run app.py
 """
-import datetime as dt
 import io
 
 import altair as alt
@@ -58,8 +57,9 @@ h1 { font-weight: 600 !important; letter-spacing: -0.01em; }
 /* Passos do "Personalizar": nome e data à esquerda, 12 | 18 à direita, lado a lado também no celular */
 .st-key-passos { gap: 0.35rem; }
 .st-key-passos [data-testid="stCaptionContainer"] { margin-top: 0.5rem; }
-.st-key-passos [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.5rem; }
-.st-key-passos [data-testid="stColumn"] { min-width: 0 !important; }
+/* Barra lateral: mês e ano (e os passos) lado a lado também no celular */
+[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; gap: 0.5rem; }
+[data-testid="stSidebar"] [data-testid="stColumn"] { min-width: 0 !important; }
 .st-key-passos [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"] { align-items: flex-end; }
 .passo { font-size: 14px; line-height: 1.25; white-space: nowrap; }
 .passo span { display: block; font-size: 12px; color: #9a9a9a; }
@@ -147,8 +147,16 @@ def estilo(chart):
 # ---- barra lateral: as 4 informações -------------------------------------------
 sb = st.sidebar
 sb.header("Seus dados")
-adm_data = sb.date_input("1. Data de admissão", None, min_value=dt.date(1990, 1, 1),
-                         max_value=dt.date(2026, 12, 31), format="DD/MM/YYYY")
+MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+         "novembro", "dezembro"]
+ANOS = list(range(FIM[0], 1989, -1))
+# Admissão só com mês e ano: o dia não muda o resultado (no mês de admissão ainda não há diferença)
+sb.markdown('<div class="rotulo-duplo" style="cursor: default">1. Admissão</div>', unsafe_allow_html=True)
+col_am, col_aa = sb.columns([1, 1])
+mes_adm = col_am.selectbox("Mês da admissão", MESES, index=None, placeholder="mês", label_visibility="collapsed")
+ano_adm = col_aa.selectbox("Ano da admissão", ANOS, index=None, placeholder="ano", label_visibility="collapsed")
+faltam = mes_adm is None or ano_adm is None
+adm_ym = None if faltam else (int(ano_adm), MESES.index(mes_adm) + 1)
 MESES_PROGRESSAO = {"março": 3, "setembro": 9}   # as progressões só acontecem nesses meses
 # Um rótulo só para mês e ano, para as duas caixas ficarem na mesma linha
 sb.markdown('<div class="rotulo-duplo" title="Progressões só acontecem em março e setembro. Veja na ficha '
@@ -157,7 +165,7 @@ sb.markdown('<div class="rotulo-duplo" title="Progressões só acontecem em mar�
 col_m, col_a = sb.columns([1, 1])
 mes_paga = col_m.selectbox("Mês", list(MESES_PROGRESSAO), index=None, placeholder="mês",
                            label_visibility="collapsed")
-ano_paga = col_a.selectbox("Ano", list(range(FIM[0], 1989, -1)), index=None, placeholder="ano",
+ano_paga = col_a.selectbox("Ano", ANOS, index=None, placeholder="ano",
                            label_visibility="collapsed")
 regra_op = sb.radio("3. Regra de progressão", [*REGRAS, PERSONALIZAR],
                     help="Progressão = subir dentro da classe (A-I → A-II). Promoção = mudar de classe (A-III → B-I). "
@@ -165,10 +173,10 @@ regra_op = sb.radio("3. Regra de progressão", [*REGRAS, PERSONALIZAR],
                          "Personalizar: escolha 12 ou 18 meses em cada passo.")
 meses_pers = None
 if regra_op == PERSONALIZAR:
-    if adm_data is None or mes_paga is None or ano_paga is None:
+    if faltam or mes_paga is None or ano_paga is None:
         sb.caption("Preencha a admissão e a 1ª progressão para escolher os passos.")
     else:
-        adm_p = (adm_data.year, adm_data.month)
+        adm_p = adm_ym
         paga_p = (int(ano_paga), MESES_PROGRESSAO[mes_paga])
         if paga_p > adm_p:
             # Uma linha por passo, com 12 | 18 ao lado. Começa pela regra 18/12 (12 nas promoções); as escolhas
@@ -220,11 +228,11 @@ st.title("Ação de progressão - Cálculo do valor a receber")
 st.caption("Cálculo aproximado, sem as fichas financeiras.")
 
 # Os campos começam vazios: cada pessoa preenche os próprios dados
-if adm_data is None or mes_paga is None or ano_paga is None:
-    st.info("Preencha na barra lateral a data de admissão e o mês e o ano em que recebeu a 1ª progressão.")
+if faltam or mes_paga is None or ano_paga is None:
+    st.info("Preencha na barra lateral o mês e o ano da admissão e da 1ª progressão.")
     st.stop()
 
-adm = (adm_data.year, adm_data.month)
+adm = adm_ym
 primeira_paga = (int(ano_paga), MESES_PROGRESSAO[mes_paga])
 if regra_op == PERSONALIZAR:
     progressao = meses_pers[0] if meses_pers else 18   # prazo da 1ª progressão, escolhido na 1ª linha
@@ -248,7 +256,7 @@ if not erro:
         hist = c.gerar_historico(adm, primeira_paga, progressao, promocao, c.add(FIM, atraso))
     try:
         res = c.calcular(c.Parametros(
-            admissao=adm, dia_admissao=adm_data.day, intersticio_1=progressao, historico=hist, fim=FIM,
+            admissao=adm, intersticio_1=progressao, historico=hist, fim=FIM,
             reflexos=c.REFLEXOS_ESTIMADO if com_reflexos else c.REFLEXOS_NAO, atualizar_ate=ATUALIZAR_ATE,
             selic=c.ler_selic(), mes_ferias=MES_FERIAS))
     except Exception as e:

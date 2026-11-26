@@ -3,7 +3,7 @@
 Calculadora aproximada das diferenças de subsídio devidas pelo atraso na 1ª progressão (carreira AFFC),
 corrigidas pela Selic, sem precisar das fichas financeiras.
 
-Informe a data de admissão, o mês e o ano em que recebeu a 1ª progressão e a regra de progressão.
+Informe o mês e o ano da admissão e da 1ª progressão e a regra de progressão.
 O app mostra o valor a receber, a composição (subsídio, 13º, 1/3 de férias, Selic, honorários advocatícios),
 a comparação de níveis e a tabela mês a mês, que pode ser baixada em CSV.
 
