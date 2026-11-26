@@ -19,6 +19,7 @@ st.set_page_config(page_title="Ação de progressão - Cálculo do valor a receb
 AZUL, VERDE = "#5b9cf0", "#12a594"
 TEXTO_FRACO, GRADE = "#9a9a9a", "#333333"
 REGRAS = {"18 progressão / 12 promoção": (18, 12), "12 para tudo": (12, 12)}
+PERSONALIZAR = "Personalizar"   # 12 ou 18 meses escolhidos passo a passo
 FIM = (2026, 10)          # último mês já pago (diferenças até aqui)
 ATUALIZAR_ATE = (2026, 12)  # depois do último mês, só Selic
 SINDICATO = 0.09            # desconto do sindicato, sobre o total corrigido
@@ -54,6 +55,8 @@ h1 { font-weight: 600 !important; letter-spacing: -0.01em; }
 .mg-barra > div { height: 100%; border-radius: 2px; }
 /* Mês e ano da 1ª progressão: sem o botão de limpar, para "setembro" caber na caixa */
 [data-testid="stSidebar"] [data-testid="stSelectbox"] button[aria-label="Clear value"] { display: none; }
+/* Tabela de passos (Personalizar): sem a barra de ícones, que no celular cobre a regra */
+[data-testid="stSidebar"] [data-testid="stElementToolbar"] { display: none; }
 .rotulo-duplo { font-size: 14px; line-height: 1.6; margin: 0; padding-bottom: 2px; cursor: help; }
 .rotulo-duplo .dica { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px;
     border: 1px solid #9a9a9a; border-radius: 50%; font-size: 10px; color: #9a9a9a; margin-left: 4px;
@@ -148,9 +151,44 @@ mes_paga = col_m.selectbox("Mês", list(MESES_PROGRESSAO), index=None, placehold
                            label_visibility="collapsed")
 ano_paga = col_a.selectbox("Ano", list(range(FIM[0], 1989, -1)), index=None, placeholder="ano",
                            label_visibility="collapsed")
-regra_op = sb.radio("3. Regra de progressão", list(REGRAS),
+regra_op = sb.radio("3. Regra de progressão", [*REGRAS, PERSONALIZAR],
                     help="Progressão = subir dentro da classe (A-I → A-II). Promoção = mudar de classe (A-III → B-I). "
-                         "Vale também para a 1ª progressão: 18 meses na regra 18/12, 12 meses na regra 12.")
+                         "Vale também para a 1ª progressão: 18 meses na regra 18/12, 12 meses na regra 12. "
+                         "Personalizar: escolha 12 ou 18 meses em cada passo.")
+meses_pers = None
+if regra_op == PERSONALIZAR:
+    if adm_data is None or mes_paga is None or ano_paga is None:
+        sb.caption("Preencha a admissão e a 1ª progressão para montar a tabela de passos.")
+    else:
+        adm_p = (adm_data.year, adm_data.month)
+        paga_p = (int(ano_paga), MESES_PROGRESSAO[mes_paga])
+        if paga_p > adm_p:
+            # Começa pela regra 18/12; as escolhas ficam guardadas enquanto o nº de passos não mudar
+            padrao = c.meses_padrao(adm_p, paga_p, *REGRAS["18 progressão / 12 promoção"])
+            ss = st.session_state
+            if len(ss.get("meses_pers", [])) != len(padrao):
+                ss.meses_pers = padrao
+            ss.setdefault("versao_pers", 0)
+            passos = c.passos_personalizados(adm_p, paga_p, ss.meses_pers)
+            base = pd.DataFrame({
+                "passo": [f"{c.nome_na_data(i - 1, d)} → {c.nome_na_data(i, d)}" for d, i in passos],
+                "meses": ss.meses_pers[:len(passos)],
+                "recebido": [mes_ano(d) for d, _ in passos]})
+            editado = sb.data_editor(
+                base, key=f"pers_{ss.versao_pers}", hide_index=True, width="stretch", num_rows="fixed",
+                height=35 * (len(base) + 1) + 3,     # todas as linhas, sem rolagem interna
+                disabled=["passo", "recebido"],
+                column_config={"meses": st.column_config.SelectboxColumn("meses", options=[12, 18], required=True,
+                                                                         width="small")})
+            sb.caption(f"Toque ou clique duas vezes em \"meses\" para trocar entre 12 e 18. Na 1ª linha, são os meses desde a admissão "
+                       f"(definem o atraso); nas outras, desde o passo anterior, e as datas se ajustam. "
+                       f"Datas depois de {mes_ano(FIM)} são previstas. Desde 01/2025, os nomes são os da tabela de 20 níveis.")
+            novos = [int(m) for m in editado["meses"]]
+            if novos != ss.meses_pers[:len(passos)]:
+                ss.meses_pers = novos + ss.meses_pers[len(novos):]
+                ss.versao_pers += 1      # recria a tabela com as datas recalculadas
+                st.rerun()
+            meses_pers = ss.meses_pers
 com_reflexos = sb.checkbox(
     "4. Incluir 13º e 1/3 de férias", True,
     help="Valores estimados, sem as fichas: 50% do 13º em junho e o restante em novembro; 1/3 de férias uma vez "
@@ -169,7 +207,10 @@ if adm_data is None or mes_paga is None or ano_paga is None:
 
 adm = (adm_data.year, adm_data.month)
 primeira_paga = (int(ano_paga), MESES_PROGRESSAO[mes_paga])
-progressao, promocao = REGRAS[regra_op]
+if regra_op == PERSONALIZAR:
+    progressao = meses_pers[0] if meses_pers else 18   # prazo da 1ª progressão, escolhido na 1ª linha
+else:
+    progressao, promocao = REGRAS[regra_op]
 
 erro = None
 if primeira_paga <= adm:
@@ -182,7 +223,10 @@ if not erro:
     # O nível devido em cada mês até FIM é o recebido `atraso` meses depois; por isso a regra gera os passos
     # recebidos até FIM + atraso. Os passos depois de FIM não mudam o recebido até FIM, só completam o devido.
     atraso = max(c.diff(primeira_paga, c.add(adm, progressao)), 0)
-    hist = c.gerar_historico(adm, primeira_paga, progressao, promocao, c.add(FIM, atraso))
+    if meses_pers:
+        hist = c.historico_personalizado(adm, primeira_paga, meses_pers, c.add(FIM, atraso))
+    else:
+        hist = c.gerar_historico(adm, primeira_paga, progressao, promocao, c.add(FIM, atraso))
     try:
         res = c.calcular(c.Parametros(
             admissao=adm, dia_admissao=adm_data.day, intersticio_1=progressao, historico=hist, fim=FIM,
@@ -383,10 +427,10 @@ with aba_mes:
     st.download_button("Baixar planilha (CSV)", buf.getvalue().encode("utf-8-sig"), "calculo_progressao.csv",
                        "text/csv")
 
-    secao("Seus níveis · gerados pela regra, confira com as suas fichas")
+    secao("Seus níveis · confira com as suas fichas")
     st.dataframe(pd.DataFrame([{
         "nível": n,
-        "recebido em": mes_ano(c.str_ym(d)) + (" (previsto pela regra)" if c.str_ym(d) > FIM else ""),
+        "recebido em": mes_ano(c.str_ym(d)) + (" (previsto)" if c.str_ym(d) > FIM else ""),
         "devido em": mes_ano(c.add(c.str_ym(d), -res.shift if i else 0)),
     } for i, (d, n) in enumerate(hist)]), hide_index=True, width="content")
     st.caption(f"Em 01/2025 a carreira passou a ter 20 níveis e os nomes mudaram sem subir de posição "
@@ -415,12 +459,14 @@ with aba_met:
 
     secao("Como é calculado")
     st.markdown(f"""
-- **Atraso**: mês em que recebeu a 1ª progressão − (admissão + 18 meses, ou 12 na regra "12 para tudo").
+- **Atraso**: mês em que recebeu a 1ª progressão − (admissão + 18 meses, ou 12 na regra "12 para tudo"; em
+  "Personalizar", os meses da 1ª linha da tabela).
 - **Nível devido**: é a carreira que a pessoa teria se a 1ª progressão viesse no prazo. Como cada passo conta a
   partir do anterior, todos atrasaram o mesmo tanto: cada nível deveria ter chegado o mesmo número de meses antes
   que a 1ª progressão atrasou.
 - **Níveis recebidos**: sempre em março ou setembro. Na regra 18/12, 18 meses nos números (A-I → A-II) e 12 nas
-  letras (A-III → B-I); na regra "12 para tudo", 12 meses em todos.
+  letras (A-III → B-I); na regra "12 para tudo", 12 meses em todos; em "Personalizar", 12 ou 18 meses
+  escolhidos em cada passo.
 - **13º e 1/3 de férias**: estimados; 13º com metade em junho e o resto em novembro; 1/3 de férias em dezembro.
 - **Selic composta**: saldo do mês = saldo anterior × (1 + Selic do mês anterior) + diferenças do mês.
 - **Sindicato**: {SINDICATO * 100:g}% sobre o total corrigido.
