@@ -330,7 +330,7 @@ with aba_res:
     if com_honorarios:
         linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", 1.0, AZUL),
                        ("−", "Honorários advocatícios", desconto, "desc", (desconto / corrigido if corrigido else 0), VERMELHO)]
-    linhas_ext.append(("=", "Valor a receber", liquido, "final", None, None))
+    linhas_ext.append(("=", "Valor a receber", liquido, "final", (liquido / corrigido if corrigido else 0), VERDE))
     extrato(linhas_ext)
 
     # nível recebido x devido
