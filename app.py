@@ -486,7 +486,7 @@ with aba_met:
     st.dataframe(grade_selic.astype(float).map(lambda v: "" if pd.isna(v) else f"{v:.2f}".replace(".", ",")),
                  width="stretch")
 
-    secao("Como é calculado")
+    secao("Regras do cálculo")
     st.markdown(f"""
 - **Atraso**: mês em que recebeu a 1ª progressão − (admissão + 18 meses, ou 12 na regra "12 para tudo"; em
   "Personalizar", os meses da 1ª linha da tabela).
