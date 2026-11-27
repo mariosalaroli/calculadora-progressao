@@ -277,7 +277,7 @@ if primeira_paga <= devida:
             f"e foi recebida em {mes_ano(primeira_paga)}, {quando}. Não há diferenças a receber.")
     st.stop()
 
-aba_res, aba_mes, aba_met = st.tabs(["Resumo", "Mês a mês", "Como é calculado"])
+aba_res, aba_mes, aba_met = st.tabs(["Resumo", "Mês a mês", "Bases do cálculo"])
 
 df = pd.DataFrame(res.linhas)
 df["data"] = pd.to_datetime(df["mes"] + "/01", format="%Y/%m/%d")
