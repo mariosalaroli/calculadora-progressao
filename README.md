@@ -1,6 +1,6 @@
 # Ação de progressão — cálculo do valor a receber
 
-Calculadora aproximada das diferenças de subsídio devidas pelo atraso na 1ª progressão (carreira AFFC),
+Calculadora aproximada das diferenças de subsídio devidas pelo atraso na 1ª progressão (Auditor Federal de Finanças e Controle; as tabelas de Técnico ainda não estão incluídas),
 corrigidas pela Selic, sem precisar das fichas financeiras.
 
 Informe o mês e o ano da admissão e da 1ª progressão e a regra de progressão.

@@ -242,7 +242,7 @@ MES_FERIAS = 12  # 1/3 de férias estimado em dezembro de cada ano (o mês que f
 
 st.title("Ação de progressão - Cálculo do valor a receber")
 st.caption("Cálculo aproximado, sem as fichas financeiras. Não considera imposto de renda nem contribuição "
-           "previdenciária.")
+           "previdenciária. Usa as tabelas de Auditor Federal de Finanças e Controle; não vale para Técnicos.")
 
 # Os campos começam vazios: cada pessoa preenche os próprios dados
 if faltam or mes_paga is None or ano_paga is None:
@@ -482,12 +482,12 @@ with aba_mes:
 
 # ---- como é calculado ---------------------------------------------------------
 with aba_met:
-    secao("Tabelas de subsídio · 13 níveis, até 12/2024")
+    secao("Tabelas de subsídio de Auditor · 13 níveis, até 12/2024")
     st.dataframe(pd.DataFrame({mes_ano(k): v for k, v in c.T13.items()}, index=c.L13).style.format(br),
                  width="stretch")
     st.caption("Cada coluna vale a partir do mês indicado. 2008 a 2013: MP 440/2008, Lei 11.890/2008 e "
                "Lei 12.775/2012 (Anexo IV-a).")
-    secao("Tabelas de subsídio · 20 níveis, a partir de 01/2025")
+    secao("Tabelas de subsídio de Auditor · 20 níveis, a partir de 01/2025")
     st.dataframe(pd.DataFrame({mes_ano(k): v for k, v in c.T20.items()}, index=c.L20).style.format(br),
                  width="stretch")
 
