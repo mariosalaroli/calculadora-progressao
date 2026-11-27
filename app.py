@@ -324,7 +324,7 @@ with aba_res:
     partes = [("Subsídio", res.total("subsídio"), AZUL)]
     if com_reflexos:
         partes += [("13º salário", res.total("13º"), AZUL), ("1/3 de férias", res.total("1/3 férias"), AZUL)]
-    partes.append(("Correção pela Selic", juros, VERDE))
+    partes.append(("Correção pela Selic", juros, AZUL))
     linhas_ext = [*(("+" if i else "", nome, v, "", (v / corrigido if corrigido else 0), cor) for i, (nome, v, cor) in enumerate(partes))]
     if com_honorarios:
         linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", None, None),
