@@ -230,8 +230,8 @@ if regra_op == PERSONALIZAR:
                     d = c.add(d, m)
                 col_t.markdown(rotulo(d), unsafe_allow_html=True)
                 meses_pers.append(m)
-            caixa.caption("Mudança de letra é sempre 12 meses. Desde 01/2025, os nomes são os da tabela de "
-                          "20 níveis.")
+            caixa.caption("Mudança de letra é sempre 12 meses. A partir de 01/2025, vale a tabela de 20 níveis "
+                          "(ex.: C-I passou a C-IV).")
 com_reflexos = sb.checkbox(
     "4. Incluir 13º e 1/3 de férias", True,
     help="Valores estimados, sem as fichas: 50% do 13º em junho e o restante em novembro; 1/3 de férias uma vez "
