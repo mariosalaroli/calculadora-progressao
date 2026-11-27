@@ -241,7 +241,8 @@ com_honorarios = sb.checkbox(f"5. Descontar {HONORARIOS * 100:g}% de honorários
 MES_FERIAS = 12  # 1/3 de férias estimado em dezembro de cada ano (o mês que ficou mais perto dos valores reais nas fichas testadas)
 
 st.title("Ação de progressão - Cálculo do valor a receber")
-st.caption("Cálculo aproximado, sem as fichas financeiras.")
+st.caption("Cálculo aproximado, sem as fichas financeiras. Não inclui os descontos de imposto de renda e "
+           "previdência, que podem reduzir o valor a receber.")
 
 # Os campos começam vazios: cada pessoa preenche os próprios dados
 if faltam or mes_paga is None or ano_paga is None:
