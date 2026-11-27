@@ -63,6 +63,9 @@ h1 { font-weight: 600 !important; letter-spacing: -0.01em; }
 .st-key-passos [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"] { align-items: flex-end; }
 .passo { font-size: 14px; line-height: 1.25; white-space: nowrap; }
 .passo span { display: block; font-size: 12px; color: #9a9a9a; }
+.st-key-passos [data-testid="stMarkdownContainer"]:has(.passo-fixo) { margin-bottom: 0 !important; }
+.passo-fixo { width: 95px; height: 38px; margin-left: auto; display: flex; align-items: center; justify-content: center;
+              border: 1px dashed #4a4a4a; border-radius: 8px; font-size: 13px; color: #9a9a9a; white-space: nowrap; }
 .passo-cab { display: flex; justify-content: space-between; font-size: 11px; color: #9a9a9a; letter-spacing: 0.05em;
              text-transform: uppercase; padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1px solid #404040; }
 .rotulo-duplo { font-size: 14px; line-height: 1.6; margin: 0; padding-bottom: 2px; cursor: help; }
@@ -172,7 +175,7 @@ regra_op = sb.radio("3. Regra de progressão", [*REGRAS, PERSONALIZAR],
                          "- **18/12**: 18 meses para subir de número (A-I → A-II) e 12 para mudar de letra "
                          "(A-III → B-I).\n"
                          "- **12 para tudo**: 12 meses em todos os passos.\n"
-                         "- **Personalizar**: você escolhe 12 ou 18 em cada passo.\n\n"
+                         "- **Personalizar**: você escolhe 12 ou 18 em cada subida de número; mudança de letra é sempre 12.\n\n"
                          "A 1ª progressão também conta: era devida 18 ou 12 meses após a admissão.")
 meses_pers = None
 if regra_op == PERSONALIZAR:
@@ -206,19 +209,29 @@ if regra_op == PERSONALIZAR:
             meses_pers, d = [], paga_p
             for k, idx in enumerate(range(idx0 + 1, 20)):
                 key = f"pm_{k}"
-                if key not in ss:
-                    cand = c.add(d, 18)
-                    ss[key] = ss[key + "_ult"] = 18 if k == 0 or classe(idx - 1, cand) == classe(idx, cand) else 12
+                # Mudança de letra (promoção) é sempre 12 meses: fica travada. Mesmo critério da regra 18/12.
+                cand = c.add(d, 18)
+                promocao = k > 0 and classe(idx - 1, cand) != classe(idx, cand)
+                if not promocao and key not in ss:
+                    ss[key] = ss[key + "_ult"] = 18
+                def rotulo(d: c.Ym) -> str:
+                    quando = mes_ano(d) + (" · prevista" if d > FIM else "")
+                    return (f'<div class="passo">{c.nome_na_data(idx - 1, d)} → {c.nome_na_data(idx, d)}'
+                            f'<span>{quando}</span></div>')
+
                 col_t, col_m = caixa.columns([1.25, 1], vertical_alignment="center", gap="small")
-                m = col_m.segmented_control(f"Meses do passo {k + 1}", [12, 18], key=key, on_change=manter_escolha,
-                                            args=(key,), label_visibility="collapsed")
+                if promocao:
+                    m = 12      # no lugar dos botões, uma caixa do mesmo tamanho com o 12 fixo
+                    col_m.markdown('<div class="passo-fixo">12 · fixo</div>', unsafe_allow_html=True)
+                else:
+                    m = col_m.segmented_control(f"Meses do passo {k + 1}", [12, 18], key=key, on_change=manter_escolha,
+                                                args=(key,), label_visibility="collapsed")
                 if k:
                     d = c.add(d, m)
-                quando = mes_ano(d) + (" · prevista" if d > FIM else "")
-                col_t.markdown(f'<div class="passo">{c.nome_na_data(idx - 1, d)} → {c.nome_na_data(idx, d)}'
-                               f'<span>{quando}</span></div>', unsafe_allow_html=True)
+                col_t.markdown(rotulo(d), unsafe_allow_html=True)
                 meses_pers.append(m)
-            caixa.caption("Desde 01/2025, os nomes são os da tabela de 20 níveis.")
+            caixa.caption("Mudança de letra é sempre 12 meses. Desde 01/2025, os nomes são os da tabela de "
+                          "20 níveis.")
 com_reflexos = sb.checkbox(
     "4. Incluir 13º e 1/3 de férias", True,
     help="Valores estimados, sem as fichas: 50% do 13º em junho e o restante em novembro; 1/3 de férias uma vez "
@@ -489,13 +502,13 @@ with aba_met:
     secao("Regras do cálculo")
     st.markdown(f"""
 - **Atraso**: mês em que recebeu a 1ª progressão − (admissão + 18 meses, ou 12 na regra "12 para tudo"; em
-  "Personalizar", os meses da 1ª linha da tabela).
+  "Personalizar", os meses escolhidos na 1ª linha).
 - **Nível devido**: é a carreira que a pessoa teria se a 1ª progressão viesse no prazo. Como cada passo conta a
   partir do anterior, todos atrasaram o mesmo tanto: cada nível deveria ter chegado o mesmo número de meses antes
   que a 1ª progressão atrasou.
 - **Níveis recebidos**: sempre em março ou setembro. Na regra 18/12, 18 meses nos números (A-I → A-II) e 12 nas
   letras (A-III → B-I); na regra "12 para tudo", 12 meses em todos; em "Personalizar", 12 ou 18 meses
-  escolhidos em cada passo.
+  escolhidos em cada subida de número, e 12 nas letras.
 - **13º e 1/3 de férias**: estimados; 13º com metade em junho e o resto em novembro; 1/3 de férias em dezembro.
 - **Selic composta**: saldo do mês = saldo anterior × (1 + Selic do mês anterior) + diferenças do mês.
 - **Honorários advocatícios**: {HONORARIOS * 100:g}% sobre o total corrigido, pagos ao escritório.
