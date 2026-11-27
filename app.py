@@ -396,7 +396,7 @@ with aba_res:
 
 # ---- mês a mês ----------------------------------------------------------------
 with aba_mes:
-    secao("Diferenças mês a mês")
+    secao("Memória de cálculo")
     tab = pd.DataFrame({
         "ano/mês": df["mes"], "verba": df["verba"],
         "nível recebido": df["nivel_pago"], "valor recebido": df["valor_pago"],
@@ -454,7 +454,7 @@ with aba_mes:
 
     buf = io.StringIO()
     tab.to_csv(buf, sep=";", decimal=",", index=False, float_format="%.2f")
-    st.download_button("Baixar planilha (CSV)", buf.getvalue().encode("utf-8-sig"), "calculo_progressao.csv",
+    st.download_button("Baixar memória de cálculo (CSV)", buf.getvalue().encode("utf-8-sig"), "memoria_de_calculo.csv",
                        "text/csv")
 
     secao("Seus níveis · confira com as suas fichas")
