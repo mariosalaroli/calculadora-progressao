@@ -23,6 +23,7 @@ FIM = (2026, 10)          # último mês já pago (diferenças até aqui)
 ATUALIZAR_ATE = (2026, 12)  # depois do último mês, só Selic
 HONORARIOS = 0.09           # honorários advocatícios do escritório, sobre o total corrigido
 VERMELHO = "#f87171"
+CINZA = "#bdbdbd"          # barras neutras do extrato (composição do valor)
 
 
 def br(v: float) -> str:
@@ -322,13 +323,13 @@ with aba_res:
     ])
 
     secao("De onde vem o valor")
-    partes = [("Subsídio", res.total("subsídio"), AZUL)]
+    partes = [("Subsídio", res.total("subsídio"), CINZA)]
     if com_reflexos:
-        partes += [("13º salário", res.total("13º"), AZUL), ("1/3 de férias", res.total("1/3 férias"), AZUL)]
-    partes.append(("Correção pela Selic", juros, AZUL))
+        partes += [("13º salário", res.total("13º"), CINZA), ("1/3 de férias", res.total("1/3 férias"), CINZA)]
+    partes.append(("Correção pela Selic", juros, CINZA))
     linhas_ext = [*(("+" if i else "", nome, v, "", (v / corrigido if corrigido else 0), cor) for i, (nome, v, cor) in enumerate(partes))]
     if com_honorarios:
-        linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", 1.0, AZUL),
+        linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", 1.0, CINZA),
                        ("−", "Honorários advocatícios", desconto, "desc", (desconto / corrigido if corrigido else 0), VERMELHO)]
     linhas_ext.append(("=", "Valor a receber", liquido, "final", (liquido / corrigido if corrigido else 0), VERDE))
     extrato(linhas_ext)
