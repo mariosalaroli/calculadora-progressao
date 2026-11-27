@@ -428,27 +428,21 @@ with aba_mes:
                                                                          df.loc[virada, "n_pago"])]
     tab.loc[virada, "nível devido"] = [com_antigo(a, n) for a, n in zip(df.loc[virada, "nivel_devido"],
                                                                        df.loc[virada, "n_devido"])]
-    # A taxa que corrige o saldo em cada mês é a Selic do mês anterior, a mesma para todas as linhas do mês.
-    # Os juros entram só na 1ª linha do mês (o saldo é corrigido uma vez por mês): em cada linha,
+    # O saldo do fim de cada mês rende a Selic daquele mês, e os juros entram na 1ª linha do mês seguinte.
+    # Para a conta ficar à vista, a Selic do mês aparece só na última linha do mês, ao lado do saldo:
+    # juros no mês (linha de baixo) = saldo corrigido × Selic (%) da linha de cima;
     # saldo corrigido = saldo da linha anterior + juros no mês + diferença.
     SELIC = c.ler_selic()
-    COL_SELIC, COL_JUROS = "Selic do mês anterior (%)", "juros no mês (R$)"
-
-    def selic_anterior(mes: str) -> str:
-        v = SELIC.get(c.ym_str(c.add(c.str_ym(mes), -1)))
-        return "" if v is None else f"{v * 100:.2f}".replace(".", ",")
-
-    primeiro_mes = df["mes"].iloc[0]
-    tab.insert(7, COL_SELIC, ["" if m == primeiro_mes else selic_anterior(m) for m in df["mes"]])
+    COL_SELIC, COL_JUROS = "Selic (%)", "juros no mês (R$)"
     # Fecho da conta: os meses só com Selic, os honorários advocatícios e o valor a receber
-    fecho = [{"ano/mês": a["mes"], "verba": "atualização Selic", COL_SELIC: selic_anterior(a["mes"]),
-              "saldo corrigido": a["saldo"]} for a in res.atualizacao]
+    fecho = [{"ano/mês": a["mes"], "verba": "atualização Selic", "saldo corrigido": a["saldo"]}
+             for a in res.atualizacao]
     n_meses = len(tab) + len(fecho)
     if com_honorarios:
         fecho.append({"verba": f"honorários advocatícios ({pct_hon})", "diferença": -desconto, "saldo corrigido": liquido})
     fecho.append({"verba": "valor a receber", "saldo corrigido": liquido})
     tab = pd.concat([tab, pd.DataFrame(fecho)], ignore_index=True)
-    juros, anterior = [], 0.0
+    juros, taxas, anterior = [], [], 0.0
     for k, r in tab.iterrows():
         if k == 0 or k >= n_meses:          # 1º mês (nada a corrigir) e linhas do fecho
             juros.append(None)
@@ -457,12 +451,18 @@ with aba_mes:
             juros.append(round(r["saldo corrigido"] - anterior - dif, 2))
         if k < n_meses:
             anterior = r["saldo corrigido"]
-    tab.insert(8, COL_JUROS, juros)
+        # Selic só na última linha do mês e só se houver mês seguinte (a correção termina no último mês)
+        ultima_do_mes = k + 1 < n_meses and tab.at[k + 1, "ano/mês"] != r["ano/mês"]
+        v = SELIC.get(r["ano/mês"]) if ultima_do_mes else None
+        taxas.append("" if v is None else f"{v * 100:.2f}".replace(".", ","))
+    tab.insert(7, COL_JUROS, juros)
+    tab.insert(8, COL_SELIC, taxas)
     tab = tab.fillna({k: "" for k in ("ano/mês", "verba", "nível recebido", "nível devido", COL_SELIC)})
     st.dataframe(tab.style.format({k: br for k in ("valor recebido", "valor devido", "diferença", COL_JUROS,
                                                    "saldo corrigido")}, na_rep=""),
                  hide_index=True, width="stretch", height=500)
-    st.caption("Saldo corrigido = saldo da linha anterior + juros no mês + diferença. As últimas linhas fecham a "
+    st.caption("Juros no mês = saldo corrigido × Selic (%) da linha de cima. Saldo corrigido = saldo da linha "
+               "anterior + juros no mês + diferença. As últimas linhas fecham a "
                "conta: atualização pela Selic depois do último mês"
                + (f", honorários advocatícios ({pct_hon}) sobre o total corrigido" if com_honorarios else "")
                + " e o valor a receber.")
