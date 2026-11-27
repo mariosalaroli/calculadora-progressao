@@ -515,5 +515,7 @@ with aba_met:
 - **Honorários advocatícios**: {HONORARIOS * 100:g}% sobre o total corrigido, pagos ao escritório.
 - **Período**: diferenças de {mes_ano(c.INICIO_DIFERENCAS)} (ou da admissão, se posterior) até {mes_ano(FIM)};
   correção pela Selic até {mes_ano(ATUALIZAR_ATE)}.
-- **Limites**: é uma aproximação; afastamentos e licenças não são considerados.
+- **Limites**: é uma aproximação. Não considera afastamentos, licenças, imposto de renda, previdência nem
+  progressões fora da regra escolhida; 13º e 1/3 de férias são estimados; a correção vai até {mes_ano(ATUALIZAR_ATE)},
+  e o pagamento real terá correção até a data em que sair.
 """)
