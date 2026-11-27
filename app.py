@@ -168,9 +168,12 @@ mes_paga = col_m.selectbox("Mês", list(MESES_PROGRESSAO), index=None, placehold
 ano_paga = col_a.selectbox("Ano", ANOS, index=None, placeholder="ano",
                            label_visibility="collapsed")
 regra_op = sb.radio("3. Regra de progressão", [*REGRAS, PERSONALIZAR],
-                    help="Progressão = subir dentro da classe (A-I → A-II). Promoção = mudar de classe (A-III → B-I). "
-                         "Vale também para a 1ª progressão: 18 meses na regra 18/12, 12 meses na regra 12. "
-                         "Personalizar: escolha 12 ou 18 meses em cada passo.")
+                    help="Quantos meses levou cada passo da sua carreira:\n"
+                         "- **18/12**: 18 meses para subir de número (A-I → A-II) e 12 para mudar de letra "
+                         "(A-III → B-I).\n"
+                         "- **12 para tudo**: 12 meses em todos os passos.\n"
+                         "- **Personalizar**: você escolhe 12 ou 18 em cada passo.\n\n"
+                         "A 1ª progressão também conta: era devida 18 ou 12 meses após a admissão.")
 meses_pers = None
 if regra_op == PERSONALIZAR:
     if faltam or mes_paga is None or ano_paga is None:
