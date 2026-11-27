@@ -434,6 +434,7 @@ with aba_mes:
     # saldo corrigido = saldo da linha anterior + juros no mês + diferença.
     SELIC = c.ler_selic()
     COL_SELIC, COL_JUROS = "Selic (%)", "juros no mês (R$)"
+    TRACO = -1.0    # marcador: linha do meio de um mês com várias linhas (a Selic está na última)
     # Fecho da conta: os meses só com Selic, os honorários advocatícios e o valor a receber
     fecho = [{"ano/mês": a["mes"], "verba": "atualização Selic", "saldo corrigido": a["saldo"]}
              for a in res.atualizacao]
@@ -445,30 +446,46 @@ with aba_mes:
     juros, taxas, anterior = [], [], 0.0
     for k, r in tab.iterrows():
         if k == 0 or k >= n_meses:          # 1º mês (nada a corrigir) e linhas do fecho
-            juros.append(None)
+            juros.append(float("nan"))
         else:
             dif = 0.0 if pd.isna(r["diferença"]) else r["diferença"]
             juros.append(round(r["saldo corrigido"] - anterior - dif, 2))
         if k < n_meses:
             anterior = r["saldo corrigido"]
-        # Selic só na última linha do mês e só se houver mês seguinte (a correção termina no último mês)
-        ultima_do_mes = k + 1 < n_meses and tab.at[k + 1, "ano/mês"] != r["ano/mês"]
-        v = SELIC.get(r["ano/mês"]) if ultima_do_mes else None
-        taxas.append("" if v is None else f"{v * 100:.2f}".replace(".", ","))
+        # Selic só na última linha do mês e só se houver mês seguinte (a correção termina no último mês).
+        # Nas outras linhas de um mês com várias linhas, um traço (TRACO) indica que a taxa está mais abaixo.
+        if k + 1 >= n_meses:
+            taxas.append(None)
+        elif tab.at[k + 1, "ano/mês"] != r["ano/mês"]:
+            v = SELIC.get(r["ano/mês"])
+            taxas.append(None if v is None else round(v * 100, 2))
+        else:
+            taxas.append(TRACO)
     tab.insert(7, COL_JUROS, juros)
     tab.insert(8, COL_SELIC, taxas)
-    tab = tab.fillna({k: "" for k in ("ano/mês", "verba", "nível recebido", "nível devido", COL_SELIC)})
-    st.dataframe(tab.style.format({k: br for k in ("valor recebido", "valor devido", "diferença", COL_JUROS,
-                                                   "saldo corrigido")}, na_rep=""),
-                 hide_index=True, width="stretch", height=500)
+    tab = tab.fillna({k: "" for k in ("ano/mês", "verba", "nível recebido", "nível devido")})
+
+    def fmt_selic(v) -> str:
+        if pd.isna(v):
+            return ""
+        return "–" if v == TRACO else f"{v:.2f}".replace(".", ",")
+
+    # Exibição: números já formatados (vazio em branco, não "None"), alinhados à direita
+    NUMERICAS = ("valor recebido", "valor devido", "diferença", COL_JUROS, "saldo corrigido")
+    vis = tab.copy()
+    for col in NUMERICAS:
+        vis[col] = vis[col].map(lambda v: "" if pd.isna(v) else br(v))
+    vis[COL_SELIC] = vis[COL_SELIC].map(fmt_selic)
+    st.dataframe(vis, hide_index=True, width="stretch", height=500,
+                 column_config={col: st.column_config.TextColumn(alignment="right")
+                                for col in (*NUMERICAS, COL_SELIC)})
     st.caption("Juros no mês = saldo corrigido × Selic (%) da linha de cima. Saldo corrigido = saldo da linha "
-               "anterior + juros no mês + diferença. As últimas linhas fecham a "
-               "conta: atualização pela Selic depois do último mês"
-               + (f", honorários advocatícios ({pct_hon}) sobre o total corrigido" if com_honorarios else "")
-               + " e o valor a receber.")
+               "anterior + juros no mês + diferença. Em meses com mais de uma linha, a Selic aparece na última "
+               "linha do mês.")
 
     buf = io.StringIO()
-    tab.to_csv(buf, sep=";", decimal=",", index=False, float_format="%.2f")
+    tab.assign(**{COL_SELIC: tab[COL_SELIC].map(fmt_selic)}).to_csv(buf, sep=";", decimal=",", index=False,
+                                                                     float_format="%.2f")
     st.download_button("Baixar memória de cálculo (CSV)", buf.getvalue().encode("utf-8-sig"), "memoria_de_calculo.csv",
                        "text/csv")
 
