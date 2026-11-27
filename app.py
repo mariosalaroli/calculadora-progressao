@@ -476,7 +476,6 @@ with aba_met:
     secao("Tabelas de subsídio · 20 níveis, a partir de 01/2025")
     st.dataframe(pd.DataFrame({mes_ano(k): v for k, v in c.T20.items()}, index=c.L20).style.format(br),
                  width="stretch")
-    st.caption(f"Na mudança, o nível antigo nº n passou a ser o nº n+{c.OFFSET} (ex.: C-I → C-IV).")
 
     secao("Selic mensal (%)")
     sel = pd.DataFrame([(int(k[:4]), int(k[5:]), v * 100) for k, v in c.ler_selic().items()],
