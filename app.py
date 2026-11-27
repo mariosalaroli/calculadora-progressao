@@ -328,7 +328,7 @@ with aba_res:
     partes.append(("Correção pela Selic", juros, AZUL))
     linhas_ext = [*(("+" if i else "", nome, v, "", (v / corrigido if corrigido else 0), cor) for i, (nome, v, cor) in enumerate(partes))]
     if com_honorarios:
-        linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", None, None),
+        linhas_ext += [("=", f"Total corrigido até {mes_ano(ATUALIZAR_ATE)}", corrigido, "tot", 1.0, AZUL),
                        ("−", "Honorários advocatícios", desconto, "desc", (desconto / corrigido if corrigido else 0), VERMELHO)]
     linhas_ext.append(("=", "Valor a receber", liquido, "final", None, None))
     extrato(linhas_ext)
